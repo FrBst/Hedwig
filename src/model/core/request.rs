@@ -1,15 +1,18 @@
+use std::borrow::Borrow;
+
 use crate::model::{http::http_method::HttpMethod, request_headers::RequestHeaders};
 
 use super::scheme::Scheme;
 
+#[derive(Debug)]
 pub struct Request {
     pub method: HttpMethod,
     pub scheme: Scheme,
     pub domain: String,
     pub port: u16,
-    pub path: Option<String>,
+    pub path: String,
     pub query: Option<String>,
-    pub headers: Option<RequestHeaders>,
+    pub headers: RequestHeaders,
 }
 
 impl Request {
@@ -18,9 +21,9 @@ impl Request {
         scheme: Scheme,
         domain: String,
         port: u16,
-        path: Option<String>,
+        path: String,
         query: Option<String>,
-        headers: Option<RequestHeaders>,
+        headers: RequestHeaders,
     ) -> Request {
         Request {
             method,
@@ -35,9 +38,7 @@ impl Request {
 
     pub fn build_url(&self) -> String {
         let mut url = format!("{}://{}:{}", self.scheme, self.domain, self.port);
-        if let Some(path) = &self.path {
-            url.push_str(path);
-        }
+        url.push_str(self.path.borrow());
         if let Some(query) = &self.query {
             url.push_str(query);
         }

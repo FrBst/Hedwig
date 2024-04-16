@@ -3,12 +3,14 @@ use std::error::Error;
 use http_body_util::{BodyExt, Empty};
 use hyper::{
     body::{Bytes, Incoming},
-    client::{self, conn::http1::handshake},
-    HeaderMap, Uri,
+    client::conn::http1::handshake,
 };
 use hyper_tls::HttpsConnector;
-use hyper_util::{client::legacy::Client, rt::{TokioExecutor, TokioIo}};
-use tokio::{io, net::TcpStream};
+use hyper_util::{
+    client::legacy::Client,
+    rt::{TokioExecutor, TokioIo},
+};
+use tokio::net::TcpStream;
 
 use crate::model::{
     core::{request::Request, response::Response, scheme::Scheme},
@@ -19,14 +21,11 @@ use crate::model::{
 pub async fn send_request(request: Request) -> Result<Response, Box<dyn Error>> {
     match request.scheme {
         Scheme::Http => send_http(request).await,
-        Scheme::Https => send_https(&request).await,
+        Scheme::Https => send_https(request).await,
     }
 }
 
-async fn send_http(
-    uri: Request,
-) -> Result<Response, Box<dyn Error>> {
-
+async fn send_http(uri: Request) -> Result<Response, Box<dyn Error>> {
     let stream = TcpStream::connect(&uri.build_host()).await?;
     let io = TokioIo::new(stream);
     let (mut sender, conn) = handshake(io).await?;
@@ -49,15 +48,11 @@ async fn send_http(
     Ok(Response::new(response_body, resp.status().into()))
 }
 
-async fn send_https(request: &Request) -> Result<Response, Box<dyn Error>> {
+async fn send_https(request: Request) -> Result<Response, Box<dyn Error>> {
     let https = HttpsConnector::new();
     let client = Client::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https);
 
-    let mut res = client.get("https://hyper.rs".parse()?).await?;
-    let response_body = extract_body(&mut res).await?;
-    assert_eq!(res.status(), 200);
-    
-    let mut req = hyper::Request::builder()
+    let req = hyper::Request::builder()
         .method::<hyper::Method>(request.method.clone().into())
         .uri(request.build_url())
         .header(hyper::header::HOST, request.build_host().as_str())
@@ -67,8 +62,7 @@ async fn send_https(request: &Request) -> Result<Response, Box<dyn Error>> {
 
     let response_body = extract_body(&mut resp).await?;
 
-    Ok(Response::new(response_body, res.status().into()))
-
+    Ok(Response::new(response_body, resp.status().into()))
 }
 
 async fn extract_body(resp: &mut hyper::Response<Incoming>) -> Result<String, Box<dyn Error>> {
@@ -85,33 +79,29 @@ async fn extract_body(resp: &mut hyper::Response<Incoming>) -> Result<String, Bo
 }
 
 pub async fn test() {
-    let future = send_request(
-        crate::model::core::request::Request::new(
-            HttpMethod::Get,
-            Scheme::Https,
-            "google.com".into(),
-            443,
-            None,
-            None,
-            None
-        )
-    );
+    let future = send_request(crate::model::core::request::Request::new(
+        HttpMethod::Get,
+        Scheme::Https,
+        "google.com".into(),
+        443,
+        "/".to_owned(),
+        None,
+        RequestHeaders::new(),
+    ));
 
     dbg!(future.await.unwrap());
 }
 
 pub async fn test_http() {
-    let future = send_request(
-        crate::model::core::request::Request::new(
-            HttpMethod::Get,
-            Scheme::Http,
-            "httpforever.com".into(),
-            80,
-            None,
-            None,
-            None
-        )
-    );
+    let future = send_request(crate::model::core::request::Request::new(
+        HttpMethod::Get,
+        Scheme::Http,
+        "httpforever.com".into(),
+        80,
+        "/".to_owned(),
+        None,
+        RequestHeaders::new(),
+    ));
 
     dbg!(future.await.unwrap());
 }

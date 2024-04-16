@@ -1,4 +1,6 @@
-use std::{fmt::Display, str::FromStr, string::ParseError};
+use std::{fmt::Display, str::FromStr};
+
+use crate::error::AppError;
 
 #[derive(Debug)]
 pub enum HttpMethod {
@@ -6,7 +8,9 @@ pub enum HttpMethod {
     Post,
     Put,
     Patch,
-    Delete
+    Delete,
+    Options,
+    Head,
 }
 
 impl Display for HttpMethod {
@@ -16,10 +20,19 @@ impl Display for HttpMethod {
 }
 
 impl FromStr for HttpMethod {
-    type Err = ParseError;
+    type Err = AppError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        Ok(HttpMethod::Get)
+        match s {
+            "GET" => Ok(HttpMethod::Get),
+            "POST" => Ok(HttpMethod::Post),
+            "PUT" => Ok(HttpMethod::Put),
+            "PATCH" => Ok(HttpMethod::Patch),
+            "DELETE" => Ok(HttpMethod::Delete),
+            "OPTIONS" => Ok(HttpMethod::Options),
+            "HEAD" => Ok(HttpMethod::Head),
+            _ => Err(AppError::Method),
+        }
     }
 }
 
@@ -31,18 +44,22 @@ impl Clone for HttpMethod {
             Self::Put => Self::Put,
             Self::Patch => Self::Patch,
             Self::Delete => Self::Delete,
+            Self::Options => Self::Options,
+            Self::Head => Self::Head,
         }
     }
 }
 
-impl Into<hyper::Method> for HttpMethod {
-    fn into(self) -> hyper::Method {
-        match self {
-            Self::Get => hyper::Method::GET,
-            Self::Post => hyper::Method::POST,
-            Self::Put => hyper::Method::PUT,
-            Self::Patch => hyper::Method::PATCH,
-            Self::Delete => hyper::Method::DELETE,
+impl From<HttpMethod> for hyper::Method {
+    fn from(value: HttpMethod) -> Self {
+        match value {
+            HttpMethod::Get => hyper::Method::GET,
+            HttpMethod::Post => hyper::Method::POST,
+            HttpMethod::Put => hyper::Method::PUT,
+            HttpMethod::Patch => hyper::Method::PATCH,
+            HttpMethod::Delete => hyper::Method::DELETE,
+            HttpMethod::Options => hyper::Method::OPTIONS,
+            HttpMethod::Head => hyper::Method::HEAD,
         }
     }
 }
