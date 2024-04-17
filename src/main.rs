@@ -1,7 +1,7 @@
 mod client;
 mod error;
 
-use crate::model::core::request::Request;
+use crate::{client::Client, model::core::request::Request};
 use std::str::FromStr;
 
 use clap::Parser;
@@ -25,40 +25,17 @@ struct Args {
 
     #[arg(long, value_parser)]
     header: Option<Vec<String>>,
+
+    #[arg(long, default_value_t = false)]
+    fix: bool,
 }
 
-#[tokio::main]
-async fn main() -> Result<(), AppError> {
+fn main() -> Result<(), AppError> {
     let args = Args::parse();
     dbg!(&args);
 
-    let mut url = args.url;
-
-    if !url.contains("://") {
-        url.insert_str(0, "http://");
-    }
-
-    let url = Url::parse(url.as_str()).unwrap();
-    dbg!(&url);
-
-    let scheme = Scheme::from_str(url.scheme())?;
-    let domain = url.domain().unwrap().to_owned();
-    let method = HttpMethod::Get;
-    let port = url.port().unwrap_or(scheme.default_port());
-    let path = url.path().to_owned();
-    let query = url.query().map(|s| s.to_owned());
-    let headers = parse_headers(args.header)?;
-
-    let request = Request {
-        method,
-        scheme,
-        domain,
-        port,
-        path,
-        query,
-        headers,
-    };
-    dbg!(&request);
+    let resp = Client::new(args.url.as_str()).strict_url(!args.fix).send();
+    dbg!(&resp);
 
     Ok(())
 }

@@ -12,23 +12,30 @@ use hyper_util::{
 };
 use tokio::net::TcpStream;
 
-use crate::model::{
-    core::{request::Request, response::Response, scheme::Scheme},
-    http::http_method::HttpMethod,
-    request_headers::RequestHeaders,
+use crate::{
+    error::AppError,
+    model::{
+        core::{request::Request, response::Response, scheme::Scheme},
+        http::http_method::HttpMethod,
+        request_headers::RequestHeaders,
+    },
 };
 
-pub async fn send_request(request: Request) -> Result<Response, Box<dyn Error>> {
+pub fn send_request(request: Request) -> Result<Response, AppError> {
+    let runtime = tokio::runtime::Runtime::new().unwrap();
+
     match request.scheme {
-        Scheme::Http => send_http(request).await,
-        Scheme::Https => send_https(request).await,
+        Scheme::Http => runtime.block_on(send_http(request)),
+        Scheme::Https => runtime.block_on(send_https(request)),
     }
 }
 
-async fn send_http(uri: Request) -> Result<Response, Box<dyn Error>> {
-    let stream = TcpStream::connect(&uri.build_host()).await?;
+async fn send_http(request: Request) -> Result<Response, AppError> {
+    let stream = TcpStream::connect(&request.build_host())
+        .await
+        .map_err(|_| AppError::Request)?;
     let io = TokioIo::new(stream);
-    let (mut sender, conn) = handshake(io).await?;
+    let (mut sender, conn) = handshake(io).await.map_err(|_| AppError::Request)?;
 
     tokio::task::spawn(async move {
         if let Err(err) = conn.await {
@@ -37,18 +44,28 @@ async fn send_http(uri: Request) -> Result<Response, Box<dyn Error>> {
     });
 
     let req = hyper::Request::builder()
-        .uri(uri.build_url())
-        .header(hyper::header::HOST, uri.build_host().as_str())
-        .body(Empty::<Bytes>::new())?;
+        .uri(request.build_url())
+        .header(hyper::header::HOST, request.build_host().as_str())
+        .body(Empty::<Bytes>::new())
+        .map_err(|_| AppError::Request)?;
 
-    let mut resp = sender.send_request(req).await?;
+    let mut resp = sender
+        .send_request(req)
+        .await
+        .map_err(|_| AppError::Request)?;
 
-    let response_body = extract_body(&mut resp).await?;
+    let response_body = extract_body(&mut resp)
+        .await
+        .map_err(|_| AppError::Request)?;
 
-    Ok(Response::new(response_body, resp.status().into()))
+    Ok(Response::new(
+        response_body,
+        resp.status().into(),
+        resp.headers().to_owned(),
+    ))
 }
 
-async fn send_https(request: Request) -> Result<Response, Box<dyn Error>> {
+async fn send_https(request: Request) -> Result<Response, AppError> {
     let https = HttpsConnector::new();
     let client = Client::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https);
 
@@ -56,13 +73,20 @@ async fn send_https(request: Request) -> Result<Response, Box<dyn Error>> {
         .method::<hyper::Method>(request.method.clone().into())
         .uri(request.build_url())
         .header(hyper::header::HOST, request.build_host().as_str())
-        .body(Empty::<Bytes>::new())?;
+        .body(Empty::<Bytes>::new())
+        .map_err(|_| AppError::Request)?;
 
-    let mut resp = client.request(req).await?;
+    let mut resp = client.request(req).await.map_err(|_| AppError::Request)?;
 
-    let response_body = extract_body(&mut resp).await?;
+    let response_body = extract_body(&mut resp)
+        .await
+        .map_err(|_| AppError::Request)?;
 
-    Ok(Response::new(response_body, resp.status().into()))
+    Ok(Response::new(
+        response_body,
+        resp.status().into(),
+        resp.headers().to_owned(),
+    ))
 }
 
 async fn extract_body(resp: &mut hyper::Response<Incoming>) -> Result<String, Box<dyn Error>> {
@@ -76,32 +100,4 @@ async fn extract_body(resp: &mut hyper::Response<Incoming>) -> Result<String, Bo
     }
 
     Ok(response_body)
-}
-
-pub async fn test() {
-    let future = send_request(crate::model::core::request::Request::new(
-        HttpMethod::Get,
-        Scheme::Https,
-        "google.com".into(),
-        443,
-        "/".to_owned(),
-        None,
-        RequestHeaders::new(),
-    ));
-
-    dbg!(future.await.unwrap());
-}
-
-pub async fn test_http() {
-    let future = send_request(crate::model::core::request::Request::new(
-        HttpMethod::Get,
-        Scheme::Http,
-        "httpforever.com".into(),
-        80,
-        "/".to_owned(),
-        None,
-        RequestHeaders::new(),
-    ));
-
-    dbg!(future.await.unwrap());
 }
