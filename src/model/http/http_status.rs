@@ -1,4 +1,4 @@
-#[derive(Debug)]
+#[derive(Debug, PartialEq)]
 pub enum HttpStatus {
     Ok,
     Created,
@@ -40,4 +40,3 @@ impl From<hyper::StatusCode> for HttpStatus {
         }
     }
 }
-

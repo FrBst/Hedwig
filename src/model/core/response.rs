@@ -4,9 +4,9 @@ use crate::model::http::http_status::HttpStatus;
 
 #[derive(Debug)]
 pub struct Response {
-    body: String,
-    status: HttpStatus,
-    headers: HeaderMap<HeaderValue>,
+    pub body: String,
+    pub status: HttpStatus,
+    pub headers: HeaderMap<HeaderValue>,
 }
 
 impl Response {
@@ -18,4 +18,3 @@ impl Response {
         }
     }
 }
-

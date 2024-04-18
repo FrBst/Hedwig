@@ -28,35 +28,25 @@ struct Args {
 
     #[arg(long, default_value_t = false)]
     fix: bool,
+
+    #[arg(long)]
+    follow: bool,
 }
 
 fn main() -> Result<(), AppError> {
     let args = Args::parse();
     dbg!(&args);
 
-    let resp = Client::new(args.url.as_str()).strict_url(!args.fix).send();
+    let mut client = Client::new(args.url.as_str())
+        .strict_url(!args.fix)
+        .follow(args.follow);
+
+    if let Some(header) = args.header {
+        client = client.headers(header)?
+    }
+
+    let resp = client.send();
     dbg!(&resp);
 
     Ok(())
-}
-
-fn parse_headers(headers: Option<Vec<String>>) -> Result<RequestHeaders, AppError> {
-    if headers.is_none() {
-        return Ok(RequestHeaders::new());
-    }
-    let headers = headers.unwrap();
-
-    let mut res = Vec::new();
-    for h in headers {
-        let mut parts = h.split(':');
-        let key = parts.next();
-        let value = parts.next();
-
-        if let (Some(key), Some(value)) = (key, value) {
-            res.push((key.to_owned(), value.to_owned()));
-        } else {
-            return Err(AppError::Header);
-        }
-    }
-    Ok(res.into())
 }

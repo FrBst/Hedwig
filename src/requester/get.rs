@@ -21,7 +21,7 @@ use crate::{
     },
 };
 
-pub fn send_request(request: Request) -> Result<Response, AppError> {
+pub fn send_request(request: &Request) -> Result<Response, AppError> {
     let runtime = tokio::runtime::Runtime::new().unwrap();
 
     match request.scheme {
@@ -30,7 +30,7 @@ pub fn send_request(request: Request) -> Result<Response, AppError> {
     }
 }
 
-async fn send_http(request: Request) -> Result<Response, AppError> {
+async fn send_http(request: &Request) -> Result<Response, AppError> {
     let stream = TcpStream::connect(&request.build_host())
         .await
         .map_err(|_| AppError::Request)?;
@@ -65,7 +65,7 @@ async fn send_http(request: Request) -> Result<Response, AppError> {
     ))
 }
 
-async fn send_https(request: Request) -> Result<Response, AppError> {
+async fn send_https(request: &Request) -> Result<Response, AppError> {
     let https = HttpsConnector::new();
     let client = Client::builder(TokioExecutor::new()).build::<_, Empty<Bytes>>(https);
 

@@ -6,7 +6,7 @@ use crate::{
     error::AppError,
     model::{
         core::{request::Request, response::Response, scheme::Scheme},
-        http::http_method::HttpMethod,
+        http::{http_method::HttpMethod, http_status::HttpStatus},
         request_headers::RequestHeaders,
     },
     requester,
@@ -16,6 +16,7 @@ pub struct Client {
     url: String,
     follow: bool,
     strict_url: bool,
+    headers: Option<RequestHeaders>,
 }
 
 impl Client {
@@ -24,6 +25,7 @@ impl Client {
             url: url.to_string(),
             follow: false,
             strict_url: false,
+            headers: None,
         }
     }
 
@@ -37,27 +39,50 @@ impl Client {
         self
     }
 
-    pub fn send(&mut self) -> Result<Response, AppError> {
-        let request = self.build_request();
-
-        dbg!(&request);
-        requester::get::send_request(request)
+    pub fn headers(mut self, headers: Vec<String>) -> Result<Self, AppError> {
+        self.headers = Some(Client::parse_headers(Some(headers))?);
+        Ok(self)
     }
 
-    fn build_request(&mut self) -> Request {
+    pub fn send(&mut self) -> Result<Response, AppError> {
+        let mut request = self.build_request()?;
+
+        dbg!(&request);
+        let mut resp = requester::get::send_request(&request)?;
+        while self.follow && resp.status == HttpStatus::MovedPermanently {
+            self.url = resp
+                .headers
+                .get("Location")
+                .unwrap()
+                .to_str()
+                .unwrap()
+                .to_string();
+            request = self.build_request()?;
+            dbg!(&request);
+            resp = requester::get::send_request(&request)?;
+        }
+
+        Ok(resp)
+    }
+
+    fn build_request(&mut self) -> Result<Request, AppError> {
         if !self.strict_url {
             self.fix_url();
         }
-        let url = Url::parse(self.url.as_str()).unwrap();
+        let url = Url::parse(self.url.as_str()).map_err(|_| AppError::Request)?;
 
-        let scheme = Scheme::from_str(url.scheme()).unwrap();
-        let domain = url.domain().unwrap().to_owned();
+        let scheme = Scheme::from_str(url.scheme()).map_err(|_| AppError::Request)?;
+        let domain = if let Some(host) = url.host_str() {
+            host.to_owned()
+        } else {
+            return Err(AppError::Request);
+        };
         let method = HttpMethod::Get;
         let port = url.port().unwrap_or(scheme.default_port());
         let path = url.path().to_owned();
         let query = url.query().map(|s| s.to_owned());
         let headers = RequestHeaders::new();
-        Request {
+        Ok(Request {
             method,
             scheme,
             domain,
@@ -65,12 +90,33 @@ impl Client {
             path,
             query,
             headers,
-        }
+        })
     }
 
     fn fix_url(&mut self) {
         if !self.url.contains("://") {
             self.url.insert_str(0, "http://");
         }
+    }
+
+    fn parse_headers(headers: Option<Vec<String>>) -> Result<RequestHeaders, AppError> {
+        if headers.is_none() {
+            return Ok(RequestHeaders::new());
+        }
+        let headers = headers.unwrap();
+
+        let mut res = Vec::new();
+        for h in headers {
+            let mut parts = h.split(':');
+            let key = parts.next();
+            let value = parts.next();
+
+            if let (Some(key), Some(value)) = (key, value) {
+                res.push((key.to_owned(), value.to_owned()));
+            } else {
+                return Err(AppError::Header);
+            }
+        }
+        Ok(res.into())
     }
 }
