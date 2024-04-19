@@ -1,5 +1,6 @@
 mod client;
 mod error;
+mod sender;
 
 use crate::client::Client;
 
@@ -8,7 +9,6 @@ use error::AppError;
 use model::http::http_method::HttpMethod;
 
 mod model;
-mod requester;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about, long_about = None)]

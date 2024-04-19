@@ -9,7 +9,7 @@ use crate::{
         http::{http_method::HttpMethod, http_status::HttpStatus},
         request_headers::RequestHeaders,
     },
-    requester,
+    sender::send_request,
 };
 
 pub struct Client {
@@ -48,7 +48,7 @@ impl Client {
         let mut request = self.build_request()?;
 
         dbg!(&request);
-        let mut resp = requester::get::send_request(&request)?;
+        let mut resp = send_request(&request)?;
         while self.follow && resp.status == HttpStatus::MovedPermanently {
             self.url = resp
                 .headers
@@ -59,7 +59,7 @@ impl Client {
                 .to_string();
             request = self.build_request()?;
             dbg!(&request);
-            resp = requester::get::send_request(&request)?;
+            resp = send_request(&request)?;
             dbg!(&resp);
         }
 
