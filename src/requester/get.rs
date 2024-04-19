@@ -14,11 +14,7 @@ use tokio::net::TcpStream;
 
 use crate::{
     error::AppError,
-    model::{
-        core::{request::Request, response::Response, scheme::Scheme},
-        http::http_method::HttpMethod,
-        request_headers::RequestHeaders,
-    },
+    model::core::{request::Request, response::Response, scheme::Scheme},
 };
 
 pub fn send_request(request: &Request) -> Result<Response, AppError> {

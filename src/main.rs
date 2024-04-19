@@ -1,15 +1,11 @@
 mod client;
 mod error;
 
-use crate::{client::Client, model::core::request::Request};
-use std::str::FromStr;
+use crate::client::Client;
 
 use clap::Parser;
 use error::AppError;
-use model::{http::http_method::HttpMethod, request_headers::RequestHeaders};
-use url::Url;
-
-use crate::model::core::scheme::Scheme;
+use model::http::http_method::HttpMethod;
 
 mod model;
 mod requester;
@@ -26,7 +22,7 @@ struct Args {
     #[arg(long, value_parser)]
     header: Option<Vec<String>>,
 
-    #[arg(long, default_value_t = false)]
+    #[arg(long)]
     fix: bool,
 
     #[arg(long)]

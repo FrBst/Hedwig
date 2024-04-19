@@ -40,7 +40,7 @@ impl Client {
     }
 
     pub fn headers(mut self, headers: Vec<String>) -> Result<Self, AppError> {
-        self.headers = Some(Client::parse_headers(Some(headers))?);
+        self.headers = Some(Client::parse_headers(headers)?);
         Ok(self)
     }
 
@@ -60,6 +60,7 @@ impl Client {
             request = self.build_request()?;
             dbg!(&request);
             resp = requester::get::send_request(&request)?;
+            dbg!(&resp);
         }
 
         Ok(resp)
@@ -99,12 +100,7 @@ impl Client {
         }
     }
 
-    fn parse_headers(headers: Option<Vec<String>>) -> Result<RequestHeaders, AppError> {
-        if headers.is_none() {
-            return Ok(RequestHeaders::new());
-        }
-        let headers = headers.unwrap();
-
+    fn parse_headers(headers: Vec<String>) -> Result<RequestHeaders, AppError> {
         let mut res = Vec::new();
         for h in headers {
             let mut parts = h.split(':');

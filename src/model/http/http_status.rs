@@ -10,9 +10,9 @@ pub enum HttpStatus {
     NotFound,
 }
 
-impl HttpStatus {
-    pub fn get_code(&self) -> u16 {
-        match *self {
+impl From<HttpStatus> for u16 {
+    fn from(status: HttpStatus) -> Self {
+        match status {
             HttpStatus::Ok => 200,
             HttpStatus::Created => 201,
             HttpStatus::Accepted => 202,

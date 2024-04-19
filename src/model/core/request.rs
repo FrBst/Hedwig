@@ -16,26 +16,6 @@ pub struct Request {
 }
 
 impl Request {
-    pub fn new(
-        method: HttpMethod,
-        scheme: Scheme,
-        domain: String,
-        port: u16,
-        path: String,
-        query: Option<String>,
-        headers: RequestHeaders,
-    ) -> Request {
-        Request {
-            method,
-            scheme,
-            domain,
-            port,
-            path,
-            query,
-            headers,
-        }
-    }
-
     pub fn build_url(&self) -> String {
         let mut url = format!("{}://{}:{}", self.scheme, self.domain, self.port);
         url.push_str(self.path.borrow());
