@@ -86,7 +86,7 @@ impl Client {
         let path = url.path().to_owned();
         let query = url.query().map(|s| s.to_owned());
         let mut headers = RequestHeaders::new();
-        headers.put("User-Agent", "insucknia/0.0.1");
+        headers.put("User-Agent", "Hedwig/0.1.0");
         headers.put("Accept", "*/*");
         Ok(Request {
             method,

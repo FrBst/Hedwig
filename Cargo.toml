@@ -1,5 +1,5 @@
 [package]
-name = "insucknia"
+name = "hedwig"
 version = "0.1.0"
 edition = "2021"
 
@@ -22,4 +22,3 @@ hyper-util = { version = "0.1.0", features = [
 tokio = { version = "1", features = ["full"] }
 
 url = { version = "2.5.0" }
-
