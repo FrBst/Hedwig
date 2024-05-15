@@ -48,7 +48,9 @@ impl Client {
         let mut request = self.build_request()?;
 
         dbg!(&request);
-        let mut resp = send_request(&request)?;
+        let resp = send_request(&request);
+        dbg!(&resp);
+        let mut resp = resp?;
         while self.follow && resp.status == HttpStatus::MovedPermanently {
             self.url = resp
                 .headers
@@ -70,19 +72,22 @@ impl Client {
         if !self.strict_url {
             self.fix_url();
         }
-        let url = Url::parse(self.url.as_str()).map_err(|_| AppError::Request)?;
+        let url = Url::parse(self.url.as_str()).map_err(|e| AppError::Request(e.to_string()))?;
 
-        let scheme = Scheme::from_str(url.scheme()).map_err(|_| AppError::Request)?;
+        let scheme =
+            Scheme::from_str(url.scheme()).map_err(|e| AppError::Request(e.to_string()))?;
         let domain = if let Some(host) = url.host_str() {
             host.to_owned()
         } else {
-            return Err(AppError::Request);
+            return Err(AppError::Request("No host in URL".to_owned()));
         };
         let method = HttpMethod::Get;
-        let port = url.port().unwrap_or(scheme.default_port());
+        let port = url.port();
         let path = url.path().to_owned();
         let query = url.query().map(|s| s.to_owned());
-        let headers = RequestHeaders::new();
+        let mut headers = RequestHeaders::new();
+        headers.put("User-Agent", "insucknia/0.0.1");
+        headers.put("Accept", "*/*");
         Ok(Request {
             method,
             scheme,
@@ -110,7 +115,7 @@ impl Client {
             if let (Some(key), Some(value)) = (key, value) {
                 res.push((key.to_owned(), value.to_owned()));
             } else {
-                return Err(AppError::Header);
+                return Err(AppError::Header("Could not parse headers".to_owned()));
             }
         }
         Ok(res.into())

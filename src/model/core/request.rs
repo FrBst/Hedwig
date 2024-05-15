@@ -9,7 +9,7 @@ pub struct Request {
     pub method: HttpMethod,
     pub scheme: Scheme,
     pub domain: String,
-    pub port: u16,
+    pub port: Option<u16>,
     pub path: String,
     pub query: Option<String>,
     pub headers: RequestHeaders,
@@ -17,8 +17,7 @@ pub struct Request {
 
 impl Request {
     pub fn build_url(&self) -> String {
-        let mut url = format!("{}://{}:{}", self.scheme, self.domain, self.port);
-        url.push_str(self.path.borrow());
+        let mut url = format!("{}://{}{}", self.scheme, self.domain, self.path);
         if let Some(query) = &self.query {
             url.push_str(query);
         }
@@ -26,6 +25,19 @@ impl Request {
     }
 
     pub fn build_host(&self) -> String {
-        format!("{}:{}", self.domain, self.port)
+        let mut url = self.domain.clone();
+        if let Some(port) = self.port {
+            url.push_str(&format!(":{}", port));
+        }
+        url
+    }
+
+    pub fn build_host_with_port(&self) -> String {
+        let url = format!(
+            "{}:{}",
+            self.domain.clone(),
+            self.port.unwrap_or(self.scheme.default_port())
+        );
+        url
     }
 }

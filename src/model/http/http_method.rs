@@ -31,7 +31,9 @@ impl FromStr for HttpMethod {
             "DELETE" => Ok(HttpMethod::Delete),
             "OPTIONS" => Ok(HttpMethod::Options),
             "HEAD" => Ok(HttpMethod::Head),
-            _ => Err(AppError::Method),
+            _ => Err(AppError::Method(
+                "This HTTP method is not supported".to_string(),
+            )),
         }
     }
 }

@@ -27,11 +27,13 @@ pub fn send_request(request: &Request) -> Result<Response, AppError> {
 }
 
 async fn send_http(request: &Request) -> Result<Response, AppError> {
-    let stream = TcpStream::connect(&request.build_host())
+    let stream = TcpStream::connect(&request.build_host_with_port())
         .await
-        .map_err(|_| AppError::Request)?;
+        .map_err(|e| AppError::Request(e.to_string()))?;
     let io = TokioIo::new(stream);
-    let (mut sender, conn) = handshake(io).await.map_err(|_| AppError::Request)?;
+    let (mut sender, conn) = handshake(io)
+        .await
+        .map_err(|e| AppError::Request(e.to_string()))?;
 
     tokio::task::spawn(async move {
         if let Err(err) = conn.await {
@@ -43,16 +45,16 @@ async fn send_http(request: &Request) -> Result<Response, AppError> {
         .uri(request.build_url())
         .header(hyper::header::HOST, request.build_host().as_str())
         .body(Empty::<Bytes>::new())
-        .map_err(|_| AppError::Request)?;
+        .map_err(|e| AppError::Request(e.to_string()))?;
 
     let mut resp = sender
         .send_request(req)
         .await
-        .map_err(|_| AppError::Request)?;
+        .map_err(|e| AppError::Request(e.to_string()))?;
 
     let response_body = extract_body(&mut resp)
         .await
-        .map_err(|_| AppError::Request)?;
+        .map_err(|e| AppError::Request(e.to_string()))?;
 
     Ok(Response::new(
         response_body,
@@ -70,13 +72,16 @@ async fn send_https(request: &Request) -> Result<Response, AppError> {
         .uri(request.build_url())
         .header(hyper::header::HOST, request.build_host().as_str())
         .body(Empty::<Bytes>::new())
-        .map_err(|_| AppError::Request)?;
+        .map_err(|e| AppError::Request(e.to_string()))?;
 
-    let mut resp = client.request(req).await.map_err(|_| AppError::Request)?;
+    let mut resp = client
+        .request(req)
+        .await
+        .map_err(|e| AppError::Request(e.to_string()))?;
 
     let response_body = extract_body(&mut resp)
         .await
-        .map_err(|_| AppError::Request)?;
+        .map_err(|e| AppError::Request(e.to_string()))?;
 
     Ok(Response::new(
         response_body,

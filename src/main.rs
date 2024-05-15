@@ -42,7 +42,6 @@ fn main() -> Result<(), AppError> {
     }
 
     let resp = client.send();
-    dbg!(&resp);
 
     Ok(())
 }

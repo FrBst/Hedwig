@@ -32,7 +32,7 @@ impl FromStr for Scheme {
         match s.to_lowercase().as_str() {
             "http" => Ok(Scheme::Http),
             "https" => Ok(Scheme::Https),
-            _ => Err(AppError::Scheme),
+            _ => Err(AppError::Scheme("This scheme is not supported".to_owned())),
         }
     }
 }
